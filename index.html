@@ -180,7 +180,12 @@ select option{background:var(--navy2);}
   <div class="sb" id="sb1">
     <div class="sh"><div class="snum" id="sn1">1</div><div><div class="slbl">FECHA DE PROGRAMACIÓN</div><div class="ssub">Fecha de salida a ruta</div></div></div>
     <div class="frow-d">
-      <div class="fg" style="margin:0"><label class="fl">Fecha</label><input type="date" id="inp-fecha" onchange="chkFecha()"></div>
+      <div class="fg" style="margin:0">
+        <label class="fl">Fecha</label>
+        <input type="date" id="inp-fecha" onchange="chkFecha()"
+          style="cursor:pointer"
+          onclick="this.showPicker && this.showPicker()">
+      </div>
       <button class="btn-hoy" onclick="setHoy()">📅 HOY</button>
     </div>
   </div>
@@ -449,7 +454,7 @@ function buildU(i){
       <label class="fl">Tracto</label>
       <select id="ust-${i}" onchange="uTrac(${i})"><option value="">— Selecciona tracto —</option></select>
       <div class="pcard" id="upt-${i}">
-        <div><span class="lbl">Marca:</span><span id="u-tm-${i}">—</span></div>
+        <div><span class="lbl">Marca:</span><span id="u-tmarca-${i}">—</span></div>
         <div><span class="lbl">Año:</span><span id="u-ta-${i}">—</span></div>
         <div><span class="lbl">MTC:</span><span id="u-tc-${i}">—</span></div>
         <div><span class="lbl">Empresa:</span><span id="u-te-${i}">—</span></div>
@@ -466,8 +471,10 @@ function buildU(i){
         <select id="usv-${i}" onchange="uTolv(${i})"><option value="">— Selecciona tolva —</option></select>
         <div class="pcard" id="upv-${i}"><div><span class="lbl">Año:</span><span id="u-va-${i}">—</span></div></div>
       </div>
-      <div id="u-tm-${i}" style="display:none">
-        <input type="text" id="u-ti-${i}" placeholder="Ej: ANF-995" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();uChk(${i})">
+      <div id="u-tman-${i}" style="display:none">
+        <input type="text" id="u-ti-${i}" placeholder="Ej: ANF-995"
+          style="text-transform:uppercase;background:rgba(13,27,42,.85);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--white);font-family:'Exo 2',sans-serif;font-size:13px;width:100%;outline:none;box-sizing:border-box;"
+          oninput="this.value=this.value.toUpperCase();uChk(${i})">
       </div>
     </div>
     ${delBtn}
@@ -606,7 +613,7 @@ function uTrac(i,silent=false){
   PROG.unidades[i].tracto=t;PROG.unidades[i]._tracIdx=idx;
   const pt=document.getElementById('upt-'+i);
   if(pt){pt.classList.add('vis');
-    document.getElementById('u-tm-'+i).textContent=t.marca||'—';
+    document.getElementById('u-tmarca-'+i).textContent=t.marca||'—';
     document.getElementById('u-ta-'+i).textContent=t.anio||'—';
     document.getElementById('u-tc-'+i).textContent=t.mtc||'—';
     document.getElementById('u-te-'+i).textContent=t.empresa||'—';
@@ -616,11 +623,18 @@ function uTrac(i,silent=false){
 
 function uTolvaMode(i,mode,silent=false){
   PROG.unidades[i].tolvaMode=mode;
-  document.getElementById('tbtn-l-'+i).className='tbtn'+(mode==='lista'?' act':'');
-  document.getElementById('tbtn-m-'+i).className='tbtn'+(mode==='manual'?' act':'');
-  document.getElementById('u-tl-'+i).style.display=mode==='lista'?'':'none';
-  document.getElementById('u-tm-'+i).style.display=mode==='manual'?'':'none';
-  if(!silent){PROG.unidades[i].tolva=null;uChk(i);}
+  const btnL=document.getElementById('tbtn-l-'+i);
+  const btnM=document.getElementById('tbtn-m-'+i);
+  const divL=document.getElementById('u-tl-'+i);
+  const divM=document.getElementById('u-tman-'+i);
+  if(btnL) btnL.className='tbtn'+(mode==='lista'?' act':'');
+  if(btnM) btnM.className='tbtn'+(mode==='manual'?' act':'');
+  if(divL) divL.style.display=mode==='lista'?'':'none';
+  if(divM) divM.style.display=mode==='manual'?'':'none';
+  if(!silent){
+    if(mode==='lista'){PROG.unidades[i].tolva=null;}
+    uChk(i);
+  }
 }
 
 function uTolv(i,silent=false){
@@ -643,7 +657,7 @@ function uChk(i){
     if(u.conductor&&u.tracto){
       const cn=(u.conductor.apellidos||'')+' '+(u.conductor.nombres||'');
       const tp=u.tracto.placa||'—';
-      const vp=u.tolvaMode==='lista'?(u.tolva?.placa||'—'):(document.getElementById('u-ti-'+i)?.value||'—');
+      const vp=u.tolvaMode==='lista'?(u.tolva?.placa||'—'):((document.getElementById('u-ti-'+i)?.value||'').toUpperCase()||'—');
       sm.innerHTML=`<b>${cn.trim()}</b> · Tracto:<b>${tp}</b> · Tolva:<b>${vp}</b>`;
     }else{sm.innerHTML='<span style="color:var(--gray)">Sin configurar</span>';}
   }
@@ -665,11 +679,12 @@ function generar(){
       if(!u._serv?.licencia){showToast('Unidad '+n+': ingresa licencia SERVOSA',true);return;}
     }
     if(!u.tracto){showToast('Unidad '+n+': selecciona tracto',true);return;}
-    if(u.tolvaMode==='lista'&&!u.tolva){showToast('Unidad '+n+': selecciona tolva',true);return;}
+    if(u.tolvaMode==='lista'&&!u.tolva){showToast('Unidad '+n+': selecciona tolva de la lista',true);return;}
     if(u.tolvaMode==='manual'){
-      const v=document.getElementById('u-ti-'+i)?.value||'';
-      if(!v){showToast('Unidad '+n+': ingresa placa de tolva',true);return;}
-      PROG.unidades[i].tolva={placa:v,anio:'—'};
+      const inp=document.getElementById('u-ti-'+i);
+      const v=(inp?inp.value:'').trim();
+      if(!v){showToast('Unidad '+n+': ingresa la placa de la tolva',true);return;}
+      PROG.unidades[i].tolva={placa:v.toUpperCase(),anio:'—'};
     }
   }
 

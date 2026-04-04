@@ -124,6 +124,23 @@ select option{background:var(--navy2);}
 .tr-d:nth-child(even) td{background:#f5f9ff;}
 .tipbox{margin-top:13px;padding:10px 14px;background:rgba(0,180,216,.06);border:1px solid var(--border2);border-radius:8px;font-size:11px;color:var(--gray);}
 .tipbox strong{color:var(--white);}
+/* ESTADO PROGRAMACION */
+.estado-bar{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px;padding:12px 20px;border-radius:10px;border:2px solid;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;letter-spacing:1px;transition:all .4s;}
+.estado-bar.proyectado{background:rgba(244,168,0,.1);border-color:rgba(244,168,0,.6);color:#f4a800;}
+.estado-bar.confirmado{background:rgba(0,180,216,.1);border-color:var(--accent);color:var(--accent);}
+.estado-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.estado-bar.proyectado .estado-dot{background:#f4a800;box-shadow:0 0 8px rgba(244,168,0,.7);animation:pulse 1.5s infinite;}
+.estado-bar.confirmado .estado-dot{background:var(--accent);box-shadow:0 0 8px rgba(0,180,216,.7);}
+.btn-confirmar{padding:10px 28px;background:linear-gradient(135deg,var(--success),#009975);border:1px solid var(--success);border-radius:8px;color:#fff;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px;cursor:pointer;transition:all .2s;box-shadow:0 0 14px rgba(0,200,150,.3);}
+.btn-confirmar:hover{transform:translateY(-2px);box-shadow:0 0 24px rgba(0,200,150,.5);}
+.btn-revertir{padding:8px 18px;background:transparent;border:1px solid rgba(244,168,0,.5);border-radius:8px;color:#f4a800;font-family:'Rajdhani',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all .2s;}
+.btn-revertir:hover{background:rgba(244,168,0,.1);}
+/* Tabla proyectada = franja naranja en titulo */
+.tr-tit-proyectado td{background:#b35a00 !important;color:#fff !important;}
+.tr-tit-confirmado td{background:#1e4d8c !important;color:#fff !important;}
+.badge-estado{display:inline-block;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;margin-left:8px;vertical-align:middle;}
+.badge-proyectado{background:#f4a800;color:#000;}
+.badge-confirmado{background:var(--accent);color:#000;}
 /* PAGE 3 */
 .hfilt{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap;align-items:center;}
 .hfilt input{flex:1;min-width:170px;}
@@ -214,11 +231,21 @@ select option{background:var(--navy2);}
 <div class="page" id="page2">
 <div class="wrap2">
   <div class="ptitle"><h2>VISTA PREVIA</h2><p>Revisa antes de guardar o compartir</p></div>
+  <!-- BANNER DE ESTADO -->
+  <div class="estado-bar proyectado" id="estado-bar">
+    <div class="estado-dot"></div>
+    <span id="estado-txt">⚠️ PROGRAMACIÓN PROYECTADA — Revisa y confirma antes de guardar</span>
+  </div>
+
   <div class="prev-acts">
     <button class="ba ba-back" onclick="goPage(1)">← Editar</button>
     <button class="ba ba-png" onclick="capturar()">📸 Descargar PNG</button>
     <button class="ba ba-clip" onclick="copiarClip()">📋 Copiar imagen</button>
-    <button class="ba ba-save" onclick="guardar()">💾 Guardar en historial</button>
+    <div id="btn-confirmar-wrap">
+      <button class="btn-confirmar" onclick="confirmarProg()">✅ CONFIRMAR PROGRAMACIÓN</button>
+    </div>
+    <button class="ba ba-save" id="btn-guardar" onclick="guardar()" style="display:none">💾 Guardar en historial</button>
+    <button class="btn-revertir" id="btn-revertir" onclick="revertirProg()" style="display:none">↩ Revertir a Proyectado</button>
   </div>
   <div id="excel-wrapper">
     <div id="capture-area">
@@ -703,16 +730,59 @@ function generar(){
   });
 
   renderTable(rows,fechaFmt);
-  SNAP={fecha:fechaFmt,ruta:PROG.ruta.nombre,nUnidades:PROG.unidades.length,unidades:rows,ts:Date.now()};
+  SNAP={fecha:fechaFmt,ruta:PROG.ruta.nombre,nUnidades:PROG.unidades.length,unidades:rows,estado:'proyectado',ts:Date.now()};
+  // Reset estado a proyectado al generar nueva
+  ESTADO_PROG='proyectado';
+  const bar=document.getElementById('estado-bar');
+  if(bar){bar.className='estado-bar proyectado';document.getElementById('estado-txt').textContent='⚠️ PROGRAMACIÓN PROYECTADA — Revisa y confirma antes de guardar';}
+  const bcw=document.getElementById('btn-confirmar-wrap');if(bcw)bcw.style.display='';
+  const bg=document.getElementById('btn-guardar');if(bg)bg.style.display='none';
+  const br=document.getElementById('btn-revertir');if(br)br.style.display='none';
   goPage(2);
 }
 
 // ── TABLA ──
-function renderTable(rows,fechaFmt){
+// Estado de la programacion actual
+let ESTADO_PROG = 'proyectado'; // 'proyectado' | 'confirmado'
+
+function confirmarProg(){
+  ESTADO_PROG='confirmado';
+  // Actualizar banner
+  const bar=document.getElementById('estado-bar');
+  bar.className='estado-bar confirmado';
+  document.getElementById('estado-txt').textContent='✅ PROGRAMACIÓN CONFIRMADA — Lista para guardar y compartir';
+  // Mostrar/ocultar botones
+  document.getElementById('btn-confirmar-wrap').style.display='none';
+  document.getElementById('btn-guardar').style.display='';
+  document.getElementById('btn-revertir').style.display='';
+  // Actualizar tabla — cambiar color titulo a azul MISAGI
+  document.querySelectorAll('.tr-tit td').forEach(td=>{
+    td.style.background='#1e4d8c';
+  });
+  showToast('✅ Programación confirmada — ahora puedes guardar y compartir');
+}
+
+function revertirProg(){
+  ESTADO_PROG='proyectado';
+  const bar=document.getElementById('estado-bar');
+  bar.className='estado-bar proyectado';
+  document.getElementById('estado-txt').textContent='⚠️ PROGRAMACIÓN PROYECTADA — Revisa y confirma antes de guardar';
+  document.getElementById('btn-confirmar-wrap').style.display='';
+  document.getElementById('btn-guardar').style.display='none';
+  document.getElementById('btn-revertir').style.display='none';
+  document.querySelectorAll('.tr-tit td').forEach(td=>{
+    td.style.background='#b35a00';
+  });
+  showToast('Revertida a proyectado');
+}
+
+function renderTable(rows,fechaFmt,estado='proyectado'){
+  ESTADO_PROG=estado;
   const tb=document.getElementById('prog-tbody');
   tb.innerHTML='';
-  // Título
-  tb.innerHTML+=`<tr class="tr-tit"><td colspan="14">PROGRAMACIÓN DE VEHÍCULOS · ${fechaFmt}</td></tr>`;
+  const titBg = estado==='confirmado' ? '#1e4d8c' : '#b35a00';
+  const titLabel = estado==='confirmado' ? '' : ' [PROYECTADO]';
+  tb.innerHTML+=`<tr class="tr-tit"><td colspan="14" style="background:${titBg}">PROGRAMACIÓN DE VEHÍCULOS · ${fechaFmt}${titLabel}</td></tr>`;
   // Grupos: 7 cols Unidad + 7 cols Personal
   tb.innerHTML+=`<tr>
     <td colspan="7" class="tr-gu">DATOS DE LA UNIDAD</td>
@@ -772,7 +842,8 @@ async function copiarClip(){
 // ── FIREBASE ──
 async function guardar(){
   if(!SNAP){showToast('Genera la programación primero',true);return;}
-  if(!fbDB){showToast('Firebase no configurado',true);return;}
+  if(ESTADO_PROG!=='confirmado'){showToast('⚠️ Primero confirma la programación',true);return;}
+  if(!fbDB){showToast('Firebase no configurado — verifica la conexión',true);return;}
   try{
     await fbDB.ref('programaciones').push(SNAP);
     showToast('✅ Guardado en historial');
@@ -827,7 +898,9 @@ function viewProg(key){
   const item=window._hist?.find(([k])=>k===key);
   if(!item)return;
   const p=item[1];SNAP=p;
-  renderTable(p.unidades||[],p.fecha||'—');
+  renderTable(p.unidades||[],p.fecha||'—','confirmado');
+  // Al ver historial ya está confirmado
+  confirmarProg();
   goPage(2);
 }
 

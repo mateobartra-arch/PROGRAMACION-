@@ -463,7 +463,14 @@ function buildU(i){
       <div class="pcard" id="upc-${i}">
         <div><span class="lbl">DNI:</span><span id="u-dni-${i}">—</span></div>
         <div><span class="lbl">Licencia:</span><span id="u-lic-${i}">—</span></div>
+        <div><span class="lbl">Teléfono:</span><span id="u-tel-${i}">—</span></div>
         <div><span class="lbl">Empresa:</span><span id="u-emp-${i}">—</span></div>
+      </div>
+      <div class="fg" style="margin-top:10px">
+        <label class="fl">Teléfono del conductor</label>
+        <input type="text" id="u-fono-${i}" placeholder="Ej: 987654321"
+          style="background:rgba(13,27,42,.85);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--white);font-family:'Exo 2',sans-serif;font-size:13px;width:100%;outline:none;"
+          oninput="PROG.unidades[${i}].conductor&&(PROG.unidades[${i}].conductor.telefono=this.value);uChk(${i})">
       </div>
     </div>
     <div class="ef" id="ef-s-${i}">
@@ -474,6 +481,10 @@ function buildU(i){
       <div class="fr2">
         <div class="fg"><label class="fl">N° Licencia *</label><input type="text" id="us-lc-${i}" placeholder="Ej: Q00123456" oninput="uServ(${i})"></div>
         <div class="fg"><label class="fl">DNI (opcional)</label><input type="text" id="us-dn-${i}" placeholder="Ej: 44555666" oninput="uServ(${i})"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">Teléfono del conductor</label>
+        <input type="text" id="us-tel-${i}" placeholder="Ej: 987654321" oninput="uServ(${i})">
       </div>
     </div>
     <div style="height:1px;background:linear-gradient(to right,transparent,var(--border),transparent);margin:14px 0"></div>
@@ -617,8 +628,13 @@ function uCond(i,silent=false){
   if(pc){pc.classList.add('vis');
     document.getElementById('u-dni-'+i).textContent=c.dni||'—';
     document.getElementById('u-lic-'+i).textContent=c.licencia||'—';
+    document.getElementById('u-tel-'+i).textContent=c.telefono||'—';
     document.getElementById('u-emp-'+i).textContent=c.empresa||'—';
   }
+  // Limpiar input telefono al cambiar de conductor
+  const telInput=document.getElementById('u-fono-'+i);
+  if(telInput) telInput.value='';
+  if(PROG.unidades[i].conductor) PROG.unidades[i].conductor.telefono='';
   if(!silent)uChk(i);
 }
 
@@ -627,8 +643,9 @@ function uServ(i){
   const nm=document.getElementById('us-nm-'+i)?.value||'';
   const lc=document.getElementById('us-lc-'+i)?.value||'';
   const dn=document.getElementById('us-dn-'+i)?.value||'';
-  PROG.unidades[i]._serv={apellidos:ap,nombres:nm,licencia:lc,dni:dn};
-  PROG.unidades[i].conductor={apellidos:ap.toUpperCase(),nombres:nm,licencia:lc,dni:dn,empresa:'SERVOSA'};
+  const tel=document.getElementById('us-tel-'+i)?.value||'';
+  PROG.unidades[i]._serv={apellidos:ap,nombres:nm,licencia:lc,dni:dn,telefono:tel};
+  PROG.unidades[i].conductor={apellidos:ap.toUpperCase(),nombres:nm,licencia:lc,dni:dn,telefono:tel,empresa:'SERVOSA'};
   uChk(i);
 }
 
@@ -726,8 +743,9 @@ function generar(){
       mtc:t.mtc||'—',empresaTracto:t.empresa||'—',
       dniLic:c.licencia||c.dni||'—',
       apellidos:c.apellidos||'—',
-      nombres:c.nombres||'',  
-      empresaCond:c.empresa||u.empresa,ruta:PROG.ruta.nombre};
+      nombres:c.nombres||'',
+      telefono:c.telefono||'',
+      telefono:c.telefono||'',empresaCond:c.empresa||u.empresa,ruta:PROG.ruta.nombre};
   });
 
   renderTable(rows,fechaFmt);
@@ -783,18 +801,18 @@ function renderTable(rows,fechaFmt,estado='proyectado'){
   tb.innerHTML='';
   const titBg = estado==='confirmado' ? '#1e4d8c' : '#b35a00';
   const titLabel = estado==='confirmado' ? '' : ' [PROYECTADO]';
-  tb.innerHTML+=`<tr class="tr-tit"><td colspan="14" style="background:${titBg}">PROGRAMACIÓN DE VEHÍCULOS · ${fechaFmt}${titLabel}</td></tr>`;
+  tb.innerHTML+=`<tr class="tr-tit"><td colspan="15" style="background:${titBg}">PROGRAMACIÓN DE VEHÍCULOS · ${fechaFmt}${titLabel}</td></tr>`;
   // Grupos: 7 cols Unidad + 7 cols Personal
   tb.innerHTML+=`<tr>
     <td colspan="7" class="tr-gu">DATOS DE LA UNIDAD</td>
-    <td colspan="7" class="tr-gp">DATOS DEL PERSONAL</td>
+    <td colspan="8" class="tr-gp">DATOS DEL PERSONAL</td>
   </tr>`;
   // Encabezados
   tb.innerHTML+=`<tr class="tr-ch">
     <td>Convoy</td><td>ITEM</td><td>FECHA</td><td>TRACTO</td><td>TOLVA</td>
     <td>AÑO FAB.<br>TRACTO</td><td>AÑO FAB.<br>TOLVA</td>
     <td>MTC<br>TRACTO</td><td>EMPRESA</td><td>DNI/LIC</td>
-    <td>APELLIDOS</td><td>NOMBRES</td><td>EMPRESA</td><td>RUTA</td>
+    <td>APELLIDOS</td><td>NOMBRES</td><td>TELÉFONO</td><td>EMPRESA</td><td>RUTA</td>
   </tr>`;
   // Datos
   rows.forEach(r=>{
@@ -805,6 +823,7 @@ function renderTable(rows,fechaFmt,estado='proyectado'){
       <td>${r.anioTracto}</td><td>${r.anioTolva}</td>
       <td>${r.mtc}</td><td>${r.empresaTracto}</td><td>${r.dniLic}</td>
       <td style="font-weight:700">${r.apellidos}</td><td>${r.nombres}</td>
+      <td>${r.telefono||''}</td>
       <td>${r.empresaCond}</td>
       <td style="font-weight:700">${r.ruta}</td>
     </tr>`;
